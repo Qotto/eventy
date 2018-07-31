@@ -1,11 +1,13 @@
 # coding: utf-8
 # Copyright (c) Qotto, 2018
 
-from appdataprovider.eventlib.event.base import BaseEvent
+from ..event.base import BaseEvent
 
 from typing import Any
 
-__all__ = ['BaseEventSerializer']
+__all__ = [
+    'BaseEventSerializer',
+]
 
 
 class BaseEventSerializer:

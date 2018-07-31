@@ -5,6 +5,10 @@ from .base import BaseEvent
 
 from typing import Any, Dict
 
+__all__ = [
+    'GenericEvent',
+]
+
 
 class GenericEvent(BaseEvent):
     """

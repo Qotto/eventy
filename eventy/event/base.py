@@ -5,6 +5,10 @@ from ..utils import current_timestamp
 
 from typing import Any, Dict
 
+__all__ = [
+    'BaseEvent',
+]
+
 
 class BaseEvent:
     def __init__(self, data: Dict[str, Any] = None, correlation_id: str = None) -> None:

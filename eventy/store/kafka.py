@@ -11,7 +11,9 @@ from kafka import KafkaConsumer
 
 from typing import Any, Dict, List
 
-__all__ = ['KafkaEventStore']
+__all__ = [
+    'KafkaEventStore',
+]
 
 logger = logging.getLogger(__name__)
 

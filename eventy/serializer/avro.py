@@ -15,7 +15,9 @@ from io import BytesIO
 
 from typing import Dict, Type
 
-__all__ = ['AvroEventSerializer']
+__all__ = [
+    'AvroEventSerializer',
+]
 
 
 class AvroEventSerializer(BaseEventSerializer):

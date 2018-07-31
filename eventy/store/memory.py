@@ -8,7 +8,9 @@ from collections import deque
 
 from typing import Deque
 
-__all__ = ['MemoryEventStore']
+__all__ = [
+    'MemoryEventStore',
+]
 
 
 class MemoryEventStore(BaseEventStore):

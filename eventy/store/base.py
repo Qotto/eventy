@@ -4,7 +4,9 @@
 from ..event.base import BaseEvent
 from ..serializer.base import BaseEventSerializer
 
-__all__ = ['BaseEventStore']
+__all__ = [
+    'BaseEventStore',
+]
 
 
 class BaseEventStore:

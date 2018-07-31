@@ -4,7 +4,9 @@
 from ..event.base import BaseEvent
 from .base import BaseEventSerializer
 
-__all__ = ['DummyEventSerializer']
+__all__ = [
+    'DummyEventSerializer',
+]
 
 
 class DummyEventSerializer(BaseEventSerializer):
