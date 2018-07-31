@@ -4,3 +4,9 @@
 from .base import BaseEventStore
 from .memory import MemoryEventStore
 from .kafka import KafkaEventStore
+
+__all__ = [
+    'BaseEventStore',
+    'MemoryEventStore',
+    'KafkaEventStore',
+]

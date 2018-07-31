@@ -4,3 +4,9 @@
 from .base import BaseEventSerializer
 from .dummy import DummyEventSerializer
 from .avro import AvroEventSerializer
+
+__all__ = [
+    'BaseEventSerializer',
+    'DummyEventSerializer',
+    'AvroEventSerializer',
+]
