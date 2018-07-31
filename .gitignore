@@ -13,3 +13,8 @@ __pycache__/
 /.tox/
 /.mypy_cache/
 /*.egg-info/
+
+# Building
+/build/
+/dist/
+
