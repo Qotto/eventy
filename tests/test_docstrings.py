@@ -4,6 +4,7 @@
 import doctest
 import unittest
 
+
 def load_tests(loader, tests, pattern):
     tests.addTests(doctest.DocTestSuite('eventy.event.base'))
     tests.addTests(doctest.DocTestSuite('eventy.event.generic'))
@@ -13,4 +14,5 @@ def load_tests(loader, tests, pattern):
     tests.addTests(doctest.DocTestSuite('eventy.store.base'))
     tests.addTests(doctest.DocTestSuite('eventy.store.kafka'))
     tests.addTests(doctest.DocTestSuite('eventy.store.memory'))
+    tests.addTests(doctest.DocTestSuite('eventy.utils'))
     return tests

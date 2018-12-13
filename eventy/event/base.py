@@ -1,23 +1,29 @@
 # coding: utf-8
 # Copyright (c) Qotto, 2018
 
-from ..utils import current_timestamp
+from ..utils import current_timestamp, gen_correlation_id
 
 from typing import Any, Dict
 
 __all__ = [
-    'BaseEvent',
+    'BaseEvent'
 ]
 
 
 class BaseEvent:
-    def __init__(self, data: Dict[str, Any] = None, correlation_id: str = None) -> None:
+    def __init__(self, data: Dict[str, Any]) -> None:
         if data is None:
             data = dict()
+
+        if 'correlation_id' not in data:
+            data['correlation_id'] = gen_correlation_id()
+
+        if 'schema_version' not in data:
+            data['schema_version'] = '0.0.0'
+
         if 'event_timestamp' not in data:
             data['event_timestamp'] = current_timestamp()
-        if correlation_id is not None:
-            data['correlation_id'] = correlation_id
+
         self.name = self.__class__.__name__
         self.data = data
 

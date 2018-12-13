@@ -5,6 +5,7 @@ import json
 import os
 import yaml
 
+import logging
 from ..event.base import BaseEvent
 from ..event.generic import GenericEvent
 from .base import BaseEventSerializer
@@ -24,6 +25,7 @@ class AvroEventSerializer(BaseEventSerializer):
     AVRO_SCHEMA_FILE_EXTENSION = 'avsc.yaml'
 
     def __init__(self) -> None:
+        self.logger = logging.getLogger(__name__)
         self._schemas: Dict[str, NamedSchema] = dict()
         self._events: Dict[str, Type[BaseEvent]] = dict()
 
@@ -50,7 +52,8 @@ class AvroEventSerializer(BaseEventSerializer):
             avro_schema_data = json.dumps(yaml.load(f))
             avro_schema = Parse(avro_schema_data)
             if avro_schema.name in self._schemas:
-                raise Exception(f"Avro schema {avro_schema.name} was defined more than once!")
+                raise Exception(
+                    f"Avro schema {avro_schema.name} was defined more than once!")
             self._schemas[avro_schema.name] = avro_schema
 
     def register_event_class(self, event_class: Type[BaseEvent], event_name: str = None) -> None:
@@ -62,7 +65,6 @@ class AvroEventSerializer(BaseEventSerializer):
         if event_name not in self._schemas:
             raise NameError(f"{event_name} event does not exist")
         self._events[event_name] = event_class
-        raise NotImplementedError("This functionality is planned for future.")
 
     def encode(self, event: BaseEvent) -> bytes:
         schema = self._schemas[event.name]
@@ -80,4 +82,5 @@ class AvroEventSerializer(BaseEventSerializer):
         event_name = schema['name']
         event_data = next(reader)
         event_class = self._events.get(event_name, GenericEvent)
+
         return event_class.from_data(event_name, event_data)

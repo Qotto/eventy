@@ -5,6 +5,7 @@ from base64 import b64encode
 from datetime import datetime
 from datetime import timezone
 from secrets import token_urlsafe
+from typing import Any
 
 __all__ = [
     'date2timestamp',
@@ -19,10 +20,22 @@ def date2timestamp(date: datetime) -> int:
 
     >>> date2timestamp(datetime(1970, 1, 1, tzinfo=timezone.utc))
     0
-    >>> date2timestamp(datetime(1970, 1, 2, tzinfo=timezone.utc)) is 24*3600*1000
-    True
+    >>> date2timestamp(datetime(1970, 1, 2, tzinfo=timezone.utc))
+    86400000
     """
     return round(date.timestamp()*1000)
+
+
+def timestamp2date(timestamp: int) -> datetime:
+    """
+    Converts a UNIX timestamp in milliseconds to a UTC date.
+
+    >>> timestamp2date(0)
+    datetime.datetime(1970, 1, 1, 1, 0)
+    >>> timestamp2date(24*3600*1000)
+    datetime.datetime(1970, 1, 2, 1, 0)
+    """
+    return datetime.fromtimestamp(timestamp/1000.0)
 
 
 def current_timestamp() -> int:
@@ -65,3 +78,14 @@ def gen_correlation_id(prefix: str = None) -> str:
     date = b64encode(ts2000res65536(), b'_-').decode('ascii')
     random = token_urlsafe(CORRELATION_ID_TOKEN_LENGTH)
     return f'{prefix}:{date}:{random}'
+
+
+def object_full_name(o: Any):
+    """
+    Returns the full name of an object
+
+    >>> object_full_name(datetime.now())
+    'datetime.datetime'
+    """
+
+    return type(o).__module__ + "." + o.__class__.__qualname__

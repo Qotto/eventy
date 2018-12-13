@@ -3,8 +3,10 @@
 
 from .base import BaseEvent
 from .generic import GenericEvent
+from .handler import EventHandler
 
 __all__ = [
     'BaseEvent',
     'GenericEvent',
+    'EventHandler'
 ]
