@@ -12,6 +12,7 @@ aiokafka = "==0.4.3"
 [dev-packages]
 autopep8 = "*"
 pylint = "*"
+twine = "*"
 
 [requires]
 python_version = "3.6"

@@ -2,7 +2,6 @@ from typing import Any
 import logging
 from .utils import load_class
 
-from .serializer.base import BaseEventSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +9,7 @@ logger = logging.getLogger(__name__)
 class RuntimeContext:
     def __init__(self):
         self.serializer_class = None
-        self.serializer: BaseEventSerializer = None
+        self.serializer = None
         self.serializer_event_classes = []
 
         self.command_consumer_class = None

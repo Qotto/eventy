@@ -24,7 +24,7 @@ sign:
 	gpg --detach-sign --batch --yes --armor --passphrase $$pwd dist/${NAME_NORMALIZED}-${VERSION}-*.whl'
 	@echo
 
-pypi: dist sign
+pypi: dist
 	twine upload dist/{${NAME},${NAME_NORMALIZED}}-${VERSION}*
 
 
