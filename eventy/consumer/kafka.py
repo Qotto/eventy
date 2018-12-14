@@ -25,6 +25,8 @@ class KafkaEventConsumer(BaseEventConsumer):
         if event_topics:
             self.event_topics = event_topics
         else:
+            if not hasattr(settings, 'EVENTY_EVENT_CONSUMER_SOURCES'):
+                raise Exception("Missing EVENTY_EVENT_CONSUMER_SOURCES config")
             self.event_topics = settings.EVENTY_EVENT_CONSUMER_SOURCES.split(
                 ',')
 
@@ -57,12 +59,19 @@ class KafkaCommandConsumer(BaseCommandConsumer):
         if event_topic:
             self.event_topic = event_topic
         else:
-            self.event_topic = settings.KAFKA_COMMAND_TOPIC
+            if not hasattr(settings, 'EVENTY_COMMAND_CONSUMER_SOURCE'):
+                raise Exception(
+                    "Missing EVENTY_COMMAND_CONSUMER_SOURCE config")
+            self.event_topic = settings.EVENTY_COMMAND_CONSUMER_SOURCE
 
         if event_group:
             self.event_group = event_group
         else:
-            self.event_group = settings.KAFKA_COMMAND_GROUP
+            if not hasattr(settings, 'EVENTY_COMMAND_CONSUMER_SOURCE'):
+                raise Exception(
+                    "Missing EVENTY_COMMAND_CONSUMER_SOURCE config")
+            self.event_group = settings.EVENTY_COMMAND_CONSUMER_SOURCE.split(
+                '-')[0]
 
         self.position = position
         self.command_handlers = dict()
@@ -90,7 +99,7 @@ class KafkaConsumer:
         self.serializer = runtime_context.serializer
         self.settings = settings
 
-        if self.settings.KAFKA_BOOTSTRAP_SERVER is None:
+        if not hasattr(settings, 'KAFKA_BOOTSTRAP_SERVER'):
             raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
 
     async def start(self, event_topics: List[str], event_group: str, event_handler: Callable[[BaseEvent, str], None], position: str):
@@ -104,7 +113,8 @@ class KafkaConsumer:
             'value_deserializer': self.serializer.decode,
             'auto_offset_reset': position
         }
-        if self.settings.KAFKA_USERNAME != '' and self.settings.KAFKA_PASSWORD != '':
+
+        if hasattr(self.settings, 'KAFKA_USERNAME') and self.settings.KAFKA_USERNAME != '' and hasattr(self.settings, 'KAFKA_PASSWORD') and self.settings.KAFKA_PASSWORD != '':
             consumer_args.update({
                 'sasl_mechanism': 'PLAIN',
                 'sasl_plain_username': self.settings.KAFKA_USERNAME,
@@ -113,7 +123,7 @@ class KafkaConsumer:
 
         try:
             self.logger.info(
-                f'Initialize kafka consumer on topic {event_topics}')
+                f'Initialize kafka consumer on topic {event_topics} with group {event_group}')
             self.consumer = AIOKafkaConsumer(
                 *event_topics, **consumer_args)
         except Exception as e:

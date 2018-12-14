@@ -1,7 +1,9 @@
 from typing import Any
+from sanic import Sanic, Blueprint
+from sanic.response import json
 import logging
 from .utils import load_class
-
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,9 @@ class RuntimeContext:
         self.command_consumer = None
         self.command_handlers = []
 
+        self.command_emitter_class = None
+        self.command_emitter = None
+
         self.event_emitter_class = None
         self.event_emitter = None
 
@@ -23,9 +28,30 @@ class RuntimeContext:
         self.event_consumer = None
         self.event_handlers = []
 
+        self.http_handler = None
+        self.http_handler_port = 8000
+
     def init_from_settings(self, settings: Any):
 
-        if settings.EVENTY_SERIALIZER:
+        self.init_event_serializer(settings)
+
+        self.init_command_consummer(settings)
+
+        self.init_command_emitter(settings)
+
+        self.init_event_emitter(settings)
+
+        self.init_event_consummer(settings)
+
+        self.init_http_handler(settings)
+
+    def start(self):
+        asyncio.ensure_future(self.http_handler.create_server(
+            host="0.0.0.0", port=self.http_handler_port))
+        asyncio.get_event_loop().run_forever()
+
+    def init_event_serializer(self, settings):
+        if hasattr(settings, 'EVENTY_SERIALIZER'):
             logger.debug(
                 f"Initializing serializer {settings.EVENTY_SERIALIZER}")
             self.serializer_class = load_class(settings.EVENTY_SERIALIZER)
@@ -37,7 +63,8 @@ class RuntimeContext:
                     self.serializer.register_event_class(
                         event_class=event_class['event_class'], event_name=event_class['event_name'])
 
-        if settings.EVENTY_COMMAND_CONSUMMER:
+    def init_command_consummer(self, settings):
+        if hasattr(settings, 'EVENTY_COMMAND_CONSUMMER'):
             logger.debug(
                 f"Initializing command consumer {settings.EVENTY_COMMAND_CONSUMMER}")
             self.command_consumer_class = load_class(
@@ -49,12 +76,29 @@ class RuntimeContext:
                     self.command_consumer.register_command_handler(
                         command_handler=command_handler['command_handler'], command_class=command_handler['command_class'])
 
-        if settings.EVENTY_EVENT_EMITTER:
+            asyncio.ensure_future(self.command_consumer.start())
+
+    def init_command_emitter(self, settings):
+        if hasattr(settings, 'EVENTY_COMMAND_EMITTER'):
+            logger.debug(
+                f"Initializing command emitter {settings.EVENTY_COMMAND_EMITTER}")
+            self.command_emitter_class = load_class(
+                settings.EVENTY_COMMAND_EMITTER)
+            self.command_emitter = self.command_emitter_class(
+                settings=settings)
+
+    def init_event_emitter(self, settings):
+        if hasattr(settings, 'EVENTY_EVENT_EMITTER'):
+            logger.debug(
+                f"Initializing event emitter {settings.EVENTY_EVENT_EMITTER}")
             self.event_emitter_class = load_class(
                 settings.EVENTY_EVENT_EMITTER)
             self.event_emitter = self.event_emitter_class(settings=settings)
 
-        if settings.EVENTY_EVENT_CONSUMER:
+    def init_event_consummer(self, settings):
+        if hasattr(settings, 'EVENTY_EVENT_CONSUMER'):
+            logger.debug(
+                f"Initializing event consummer {settings.EVENTY_EVENT_CONSUMER}")
             self.event_consumer_class = load_class(
                 settings.EVENTY_EVENT_CONSUMER)
             self.event_consumer = self.event_consumer_class(settings=settings)
@@ -62,6 +106,15 @@ class RuntimeContext:
                 for event_handler in self.event_handlers:
                     self.event_consumer.register_event_handler(
                         event_handler=event_handler['event_handler'], event_class=event_handler['event_class'])
+
+            asyncio.ensure_future(self.event_consumer.start())
+
+    def init_http_handler(self, settings):
+        self.http_handler = Sanic()
+        self.http_handler.blueprint(health_bp)
+
+        if hasattr(settings, 'EVENTY_HTTP_HANDLER_PORT'):
+            self.http_handler_port = settings.EVENTY_HTTP_HANDLER_PORT
 
     def register_event_class(self, event_class, event_name):
         if self.serializer:
@@ -115,3 +168,12 @@ def event_handler(event_class):
         runtime_context.register_event_handler(event_handler, event_class)
         return event_handler
     return decorator
+
+
+health_bp = Blueprint('health')
+
+
+@health_bp.route('/health')
+async def health(request):
+    logger.debug('Health check called')
+    return json({}, status=200)

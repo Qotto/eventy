@@ -18,8 +18,8 @@ class KafkaEventEmitter(BaseEventEmitter):
 
     def __init__(self, settings=object):
         self.producer = KafkaProducer(settings=settings)
-        if settings.KAFKA_EVENT_TOPIC:
-            self.default_topic = settings.KAFKA_EVENT_TOPIC
+        if hasattr(settings, 'EVENTY_EVENT_EMITTER_DESTINATION'):
+            self.default_topic = settings.EVENTY_EVENT_EMITTER_DESTINATION
 
     async def send(self, event: BaseEvent, destination: str = None):
         if destination:
@@ -46,11 +46,7 @@ class KafkaProducer:
         self.started = False
 
         self.settings = settings
-        if self.settings.KAFKA_BOOTSTRAP_SERVER is None:
-            raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
-        if self.settings.KAFKA_BOOTSTRAP_SERVER is None:
-            raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
-        if self.settings.KAFKA_BOOTSTRAP_SERVER is None:
+        if not hasattr(self.settings, 'KAFKA_BOOTSTRAP_SERVER'):
             raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
 
         self.producer = self.create_producer()
@@ -70,7 +66,7 @@ class KafkaProducer:
                 'bootstrap_servers': [self.settings.KAFKA_BOOTSTRAP_SERVER],
                 'value_serializer': self.serializer.encode
             }
-            if self.settings.KAFKA_USERNAME != '' and self.settings.KAFKA_PASSWORD != '':
+            if hasattr(self.settings, 'KAFKA_USERNAME') and self.settings.KAFKA_USERNAME != '' and hasattr(self.settings, 'KAFKA_PASSWORD') and self.settings.KAFKA_PASSWORD != '':
                 producer_args.update({
                     'sasl_mechanism': 'PLAIN',
                     'sasl_plain_username': self.settings.KAFKA_USERNAME,
