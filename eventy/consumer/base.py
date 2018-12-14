@@ -1,7 +1,5 @@
-from ..service.service import Service
-from typing import Type
+from typing import Type, Callable
 from ..service.command import BaseCommand
-from ..event.handler import EventHandler
 from ..event.base import BaseEvent
 
 __all__ = [
@@ -14,7 +12,7 @@ class BaseEventConsumer:
     async def start(self):
         raise NotImplementedError
 
-    def register_event_handler(self, event_handler: EventHandler, event_class: Type[BaseEvent]):
+    def register_event_handler(self, event_handler: Callable[[BaseEvent, str], None], event_class: Type[BaseEvent]):
         raise NotImplementedError
 
 
@@ -23,5 +21,5 @@ class BaseCommandConsumer:
     async def start(self):
         raise NotImplementedError
 
-    def register_service(self, service: Service, command_class: Type[BaseCommand]):
+    def register_command_handler(self, command_handler: Callable[[BaseCommand, str], None], command_class: Type[BaseCommand]):
         raise NotImplementedError

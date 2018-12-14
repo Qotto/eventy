@@ -6,6 +6,7 @@ from datetime import datetime
 from datetime import timezone
 from secrets import token_urlsafe
 from typing import Any
+from pydoc import locate
 
 __all__ = [
     'date2timestamp',
@@ -80,12 +81,23 @@ def gen_correlation_id(prefix: str = None) -> str:
     return f'{prefix}:{date}:{random}'
 
 
-def object_full_name(o: Any):
+def get_dynamic_instance(full_class_name: str):
     """
-    Returns the full name of an object
+    Returns an instance of the specified class
 
-    >>> object_full_name(datetime.now())
-    'datetime.datetime'
+    >>> instance = get_dynamic_instance('eventy.consumer.base.BaseEventConsumer')
+    >>> type(instance)
+    <class 'eventy.consumer.base.BaseEventConsumer'>
     """
+    class_ = load_class(full_class_name)
+    return class_()
 
-    return type(o).__module__ + "." + o.__class__.__qualname__
+
+def load_class(full_class_name: str):
+    """
+    Loads the specified class
+
+    >>> load_class('eventy.consumer.base.BaseEventConsumer')
+    <class 'eventy.consumer.base.BaseEventConsumer'>
+    """
+    return locate(full_class_name)

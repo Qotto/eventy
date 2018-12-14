@@ -24,10 +24,14 @@ __all__ = [
 class AvroEventSerializer(BaseEventSerializer):
     AVRO_SCHEMA_FILE_EXTENSION = 'avsc.yaml'
 
-    def __init__(self) -> None:
+    def __init__(self, settings: object) -> None:
         self.logger = logging.getLogger(__name__)
         self._schemas: Dict[str, NamedSchema] = dict()
         self._events: Dict[str, Type[BaseEvent]] = dict()
+
+        if settings.AVRO_SCHEMAS_FOLDER is None:
+            raise Exception('Missing AVRO_SCHEMAS_FOLDER config')
+        self.scan_folder(schemas_folder=settings.AVRO_SCHEMAS_FOLDER)
 
     def scan_folder(self, schemas_folder: str) -> None:
         """

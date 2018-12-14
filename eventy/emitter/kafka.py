@@ -6,7 +6,7 @@ from ..serializer.base import BaseEventSerializer
 from typing import Any, Dict
 import asyncio
 from .base import BaseEventEmitter, BaseCommandEmitter
-
+from ..runtime import runtime_context
 
 __all__ = [
     'KafkaEventEmitter',
@@ -15,16 +15,23 @@ __all__ = [
 
 
 class KafkaEventEmitter(BaseEventEmitter):
-    def __init__(self, settings: Any, serializer: BaseEventSerializer):
-        self.producer = KafkaProducer(settings=settings, serializer=serializer)
 
-    async def send(self, event: BaseEvent, destination: str):
-        await self.producer.send(event=event, event_topic=destination)
+    def __init__(self, settings=object):
+        self.producer = KafkaProducer(settings=settings)
+        if settings.KAFKA_EVENT_TOPIC:
+            self.default_topic = settings.KAFKA_EVENT_TOPIC
+
+    async def send(self, event: BaseEvent, destination: str = None):
+        if destination:
+            event_topic = destination
+        else:
+            event_topic = self.default_topic
+        await self.producer.send(event=event, event_topic=event_topic)
 
 
 class KafkaCommandEmitter(BaseCommandEmitter):
-    def __init__(self, settings: Any, serializer: BaseEventSerializer):
-        self.producer = KafkaProducer(settings=settings, serializer=serializer)
+    def __init__(self, settings=object):
+        self.producer = KafkaProducer(settings=settings)
 
     async def send(self, command: BaseCommand, destination: str):
         await self.producer.send(event=command, event_topic=destination)
@@ -32,10 +39,10 @@ class KafkaCommandEmitter(BaseCommandEmitter):
 
 class KafkaProducer:
 
-    def __init__(self, settings: Any, serializer: BaseEventSerializer):
+    def __init__(self, settings: object):
         self.logger = logging.getLogger(__name__)
-        self.producer = self.create_producer()
-        self.serializer = serializer
+
+        self.serializer = runtime_context.serializer
         self.started = False
 
         self.settings = settings
@@ -45,6 +52,8 @@ class KafkaProducer:
             raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
         if self.settings.KAFKA_BOOTSTRAP_SERVER is None:
             raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
+
+        self.producer = self.create_producer()
 
     async def send(self, event: BaseEvent, event_topic: str):
         if not self.started:
@@ -71,5 +80,5 @@ class KafkaProducer:
             return AIOKafkaProducer(**producer_args)
         except Exception as e:
             self.logger.error(
-                f"Unabale to connect to the Kafka broker {self.settings.KAFKA_BOOTSTRAP_SERVER}")
+                f"Unable to connect to the Kafka broker {self.settings.KAFKA_BOOTSTRAP_SERVER}")
             raise e
