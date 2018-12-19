@@ -1,4 +1,4 @@
-from ..service.command import BaseCommand
+from ..command.base import BaseCommand
 from ..event.base import BaseEvent
 
 __all__ = [

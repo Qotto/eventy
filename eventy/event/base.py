@@ -2,7 +2,7 @@
 # Copyright (c) Qotto, 2018
 
 from ..utils import current_timestamp, gen_correlation_id
-
+from ..context import Context
 from typing import Any, Dict
 
 __all__ = [
@@ -30,3 +30,6 @@ class BaseEvent:
     @classmethod
     def from_data(cls, event_name: str, event_data: Dict[str, Any]):
         raise NotImplementedError
+
+    async def handle(self, context: Context, corr_id: str):
+        pass

@@ -1,4 +1,4 @@
-from .command import BaseCommand
+from .base import BaseCommand
 
 __all__ = [
     'BaseCommand',

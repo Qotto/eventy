@@ -3,12 +3,11 @@ import logging
 import sys
 from typing import Any, Dict, Type, Callable, List
 import asyncio
-from ..serializer.avro import AvroEventSerializer
+from ..serializer.base import BaseEventSerializer
 from ..event.base import BaseEvent
-from ..service.command import BaseCommand
+from ..command.base import BaseCommand
 from .base import BaseEventConsumer, BaseCommandConsumer
-from ..runtime import runtime_context
-
+from ..context import Context
 
 __all__ = [
     'KafkaEventConsumer',
@@ -18,107 +17,71 @@ __all__ = [
 
 class KafkaEventConsumer(BaseEventConsumer):
 
-    def __init__(self, settings: object, event_topics: List[str] = None, event_group: str = None, position: str = 'earliest'):
+    def __init__(self, context: Context, serializer: BaseEventSerializer, bootstrap_servers: str, username: str = None, password: str = None, event_topics: List[str] = None, event_group: str = None, position: str = 'earliest'):
         self.logger = logging.getLogger(__name__)
-        self.consumer = KafkaConsumer(settings=settings)
 
-        if event_topics:
-            self.event_topics = event_topics
-        else:
-            if not hasattr(settings, 'EVENTY_EVENT_CONSUMER_SOURCES'):
-                raise Exception("Missing EVENTY_EVENT_CONSUMER_SOURCES config")
-            self.event_topics = settings.EVENTY_EVENT_CONSUMER_SOURCES.split(
-                ',')
-
+        self.context = context
+        self.event_topics = event_topics
         self.event_group = event_group
         self.position = position
-        self.handlers = dict()
+        self.consumer = KafkaConsumer(serializer=serializer, bootstrap_servers=bootstrap_servers,
+                                      username=username, password=password)
 
     async def handle_event(self, event: BaseEvent, corr_id: str) -> None:
-
-        handler = self.handlers.get(type(event))
-        if handler:
-            await handler(event=event, corr_id=corr_id)
+        await event.handle(context=self.context, corr_id=corr_id)
 
     async def start(self):
         await self.consumer.start(
             event_topics=self.event_topics, event_group=self.event_group, event_handler=self.handle_event, position=self.position)
 
-    def register_event_handler(self, event_handler: Callable[[BaseEvent, str], None], event_class: Type[BaseEvent]):
-        self.logger.debug(
-            f"Registering event handler {event_handler} for event {event_class}")
-        self.handlers[event_class] = event_handler
-
 
 class KafkaCommandConsumer(BaseCommandConsumer):
 
-    def __init__(self, settings: object, event_topic: str = None, event_group: str = None, position: str = 'latest'):
+    def __init__(self, context: Context, serializer: BaseEventSerializer, bootstrap_servers: str, username: str = None, password: str = None, event_topic: str = None, event_group: str = None, position: str = 'latest'):
         self.logger = logging.getLogger(__name__)
-        self.consumer = KafkaConsumer(settings=settings)
 
-        if event_topic:
-            self.event_topic = event_topic
-        else:
-            if not hasattr(settings, 'EVENTY_COMMAND_CONSUMER_SOURCE'):
-                raise Exception(
-                    "Missing EVENTY_COMMAND_CONSUMER_SOURCE config")
-            self.event_topic = settings.EVENTY_COMMAND_CONSUMER_SOURCE
-
-        if event_group:
-            self.event_group = event_group
-        else:
-            if not hasattr(settings, 'EVENTY_COMMAND_CONSUMER_SOURCE'):
-                raise Exception(
-                    "Missing EVENTY_COMMAND_CONSUMER_SOURCE config")
-            self.event_group = settings.EVENTY_COMMAND_CONSUMER_SOURCE.split(
-                '-')[0]
-
+        self.context = context
         self.position = position
-        self.command_handlers = dict()
+        self.event_topic = event_topic
+        self.event_group = event_group
+        self.consumer = KafkaConsumer(
+            serializer=serializer, bootstrap_servers=bootstrap_servers, username=username, password=password)
 
-    async def handle_event(self, event: BaseEvent, corr_id: str):
-        command_handler = self.command_handlers.get(type(event))
-        if command_handler:
-            await command_handler(command=event, corr_id=corr_id)
+    async def handle_command(self, command: BaseCommand, corr_id: str):
+        await command.execute(self.context, corr_id=corr_id)
 
     async def start(self):
         await self.consumer.start(
-            event_topics=[self.event_topic], event_group=self.event_group, event_handler=self.handle_event, position=self.position)
-
-    def register_command_handler(self, command_handler: Callable[[BaseCommand, str], None], command_class: Type[BaseCommand]):
-        self.logger.debug(
-            f"Registering command handler {command_handler} for command {command_class}")
-        self.command_handlers[command_class] = command_handler
+            event_topics=[self.event_topic], event_group=self.event_group, event_handler=self.handle_command, position=self.position)
 
 
 class KafkaConsumer:
 
-    def __init__(self, settings: Any):
+    def __init__(self, serializer: BaseEventSerializer, bootstrap_servers: str, username: str = None, password: str = None):
         self.logger = logging.getLogger(__name__)
         self.consumer = None
-        self.serializer = runtime_context.serializer
-        self.settings = settings
-
-        if not hasattr(settings, 'KAFKA_BOOTSTRAP_SERVER'):
-            raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
+        self.serializer = serializer
+        self.bootstrap_servers = bootstrap_servers
+        self.username = username
+        self.password = password
 
     async def start(self, event_topics: List[str], event_group: str, event_handler: Callable[[BaseEvent, str], None], position: str):
 
         consumer_args: Dict[str, Any]
         consumer_args = {
             'loop': asyncio.get_event_loop(),
-            'bootstrap_servers': [self.settings.KAFKA_BOOTSTRAP_SERVER],
+            'bootstrap_servers': [self.bootstrap_servers],
             'enable_auto_commit': False,
             'group_id': event_group,
             'value_deserializer': self.serializer.decode,
             'auto_offset_reset': position
         }
 
-        if hasattr(self.settings, 'KAFKA_USERNAME') and self.settings.KAFKA_USERNAME != '' and hasattr(self.settings, 'KAFKA_PASSWORD') and self.settings.KAFKA_PASSWORD != '':
+        if self.username is not None and self.username != '' and self.password is not None and self.password != '':
             consumer_args.update({
                 'sasl_mechanism': 'PLAIN',
-                'sasl_plain_username': self.settings.KAFKA_USERNAME,
-                'sasl_plain_password': self.settings.KAFKA_PASSWORD,
+                'sasl_plain_username': self.username,
+                'sasl_plain_password': self.password,
             })
 
         try:
@@ -128,7 +91,7 @@ class KafkaConsumer:
                 *event_topics, **consumer_args)
         except Exception as e:
             self.logger.error(
-                f"Unable to connect to the Kafka broker {self.settings.KAFKA_BOOTSTRAP_SERVER} : {e}")
+                f"Unable to connect to the Kafka broker {self.bootstrap_servers} : {e}")
             raise e
 
         self.logger.info(

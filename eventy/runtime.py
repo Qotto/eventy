@@ -34,15 +34,10 @@ class RuntimeContext:
     def init_from_settings(self, settings: Any):
 
         self.init_event_serializer(settings)
-
-        self.init_command_consummer(settings)
-
+        self.init_command_consumer(settings)
         self.init_command_emitter(settings)
-
         self.init_event_emitter(settings)
-
-        self.init_event_consummer(settings)
-
+        self.init_event_consumer(settings)
         self.init_http_handler(settings)
 
     def start(self):
