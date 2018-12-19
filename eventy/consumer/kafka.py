@@ -47,8 +47,8 @@ class KafkaCommandConsumer(BaseCommandConsumer):
         self.consumer = KafkaConsumer(
             serializer=serializer, bootstrap_servers=bootstrap_servers, username=username, password=password)
 
-    async def handle_command(self, command: BaseCommand, corr_id: str):
-        await command.execute(self.context, corr_id=corr_id)
+    async def handle_command(self, event: BaseCommand, corr_id: str):
+        await event.execute(self.context, corr_id=corr_id)
 
     async def start(self):
         await self.consumer.start(
