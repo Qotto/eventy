@@ -29,7 +29,7 @@ class AvroEventSerializer(BaseEventSerializer):
         self._schemas: Dict[str, NamedSchema] = dict()
         self._events: Dict[str, Type[BaseEvent]] = dict()
 
-        if settings.AVRO_SCHEMAS_FOLDER is None:
+        if not hasattr(settings, 'AVRO_SCHEMAS_FOLDER'):
             raise Exception('Missing AVRO_SCHEMAS_FOLDER config')
         self.scan_folder(schemas_folder=settings.AVRO_SCHEMAS_FOLDER)
 
@@ -53,12 +53,13 @@ class AvroEventSerializer(BaseEventSerializer):
 
     def _extract_schema_from_file(self, file_path: str) -> None:
         with open(file_path, 'r') as f:
-            avro_schema_data = json.dumps(yaml.load(f))
-            avro_schema = Parse(avro_schema_data)
-            if avro_schema.name in self._schemas:
-                raise Exception(
-                    f"Avro schema {avro_schema.name} was defined more than once!")
-            self._schemas[avro_schema.name] = avro_schema
+            for s in yaml.load_all(f):
+                avro_schema_data = json.dumps(s)
+                avro_schema = Parse(avro_schema_data)
+                if avro_schema.name in self._schemas:
+                    raise Exception(
+                        f"Avro schema {avro_schema.name} was defined more than once!")
+                self._schemas[avro_schema.name] = avro_schema
 
     def register_event_class(self, event_class: Type[BaseEvent], event_name: str = None) -> None:
         """

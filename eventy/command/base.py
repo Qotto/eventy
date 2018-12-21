@@ -1,5 +1,5 @@
 from ..event.base import BaseEvent
-from ..context import Context
+from ..app.base import BaseApp
 
 __all__ = [
     'BaseCommand',
@@ -7,5 +7,18 @@ __all__ = [
 
 
 class BaseCommand(BaseEvent):
-    async def execute(self, context: Context, corr_id: str):
+    async def handle(self, app: BaseApp, corr_id: str):
+        await self.execute(app=app, corr_id=corr_id)
+
+    async def execute(self, app: BaseApp, corr_id: str):
         pass
+
+
+class BaseCommandResult(BaseEvent):
+    @property
+    def error(self):
+        return self.data['error']
+
+    @property
+    def message(self):
+        return self.data['message']

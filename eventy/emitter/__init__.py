@@ -1,10 +1,8 @@
 
-from .base import BaseCommandEmitter, BaseEventEmitter
-from .kafka import KafkaCommandEmitter, KafkaEventEmitter
+from .base import BaseEventEmitter
+from .kafka import KafkaProducer
 
 __all__ = [
-    'BaseCommandEmitter',
     'BaseEventEmitter',
-    'KafkaCommandEmitter',
-    'KafkaEventEmitter'
+    'KafkaProducer'
 ]

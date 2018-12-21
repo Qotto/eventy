@@ -21,9 +21,8 @@ class GenericEvent(BaseEvent):
     '1L'
     """
 
-    def __init__(self, name: str, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.name = name
+    def __init__(self, name: str, data: Dict[str, Any]) -> None:
+        super().__init__(name=name, data=data)
 
     @classmethod
     def from_data(cls, event_name: str, event_data: Dict[str, Any]):

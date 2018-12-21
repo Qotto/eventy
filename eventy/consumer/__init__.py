@@ -1,10 +1,8 @@
-from .base import BaseEventConsumer, BaseCommandConsumer
-from .kafka import KafkaEventConsumer, KafkaCommandConsumer
+from .base import BaseEventConsumer
+from .kafka import KafkaConsumer
 
 
 __all__ = [
     'BaseEventConsumer',
-    'BaseCommandConsumer',
-    'KafkaEventConsumer',
-    'KafkaCommandConsumer'
+    'KafkaConsumer'
 ]

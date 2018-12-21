@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 if __name__ == '__main__':
     setup(
         name='eventy',
-        version='2.0.4',
+        version='2.1.0',
         url='https://github.com/qotto/eventy',
         license='MIT',
         author='Alexandre Syenchuk',

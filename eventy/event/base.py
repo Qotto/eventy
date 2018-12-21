@@ -2,8 +2,8 @@
 # Copyright (c) Qotto, 2018
 
 from ..utils import current_timestamp, gen_correlation_id
-from ..context import Context
 from typing import Any, Dict
+from ..app.base import BaseApp
 
 __all__ = [
     'BaseEvent'
@@ -11,25 +11,38 @@ __all__ = [
 
 
 class BaseEvent:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, name: str, data: Dict[str, Any]) -> None:
         if data is None:
             data = dict()
-
-        if 'correlation_id' not in data:
-            data['correlation_id'] = gen_correlation_id()
 
         if 'schema_version' not in data:
             data['schema_version'] = '0.0.0'
 
-        if 'event_timestamp' not in data:
-            data['event_timestamp'] = current_timestamp()
+        if 'timestamp' not in data:
+            data['timestamp'] = current_timestamp()
 
-        self.name = self.__class__.__name__
+        self.name = name
         self.data = data
+
+    async def handle(self, app: BaseApp, corr_id: str):
+        pass
+
+    @property
+    def context(self):
+        return self.data['context']
+
+    @property
+    def schema_version(self):
+        return self.data['schema_version']
+
+    @property
+    def correlation_id(self):
+        return self.data['correlation_id']
+
+    @property
+    def timestamp(self):
+        return self.data['timestamp']
 
     @classmethod
     def from_data(cls, event_name: str, event_data: Dict[str, Any]):
         raise NotImplementedError
-
-    async def handle(self, context: Context, corr_id: str):
-        pass
