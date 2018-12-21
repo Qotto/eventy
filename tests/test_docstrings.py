@@ -11,8 +11,5 @@ def load_tests(loader, tests, pattern):
     tests.addTests(doctest.DocTestSuite('eventy.serializer.base'))
     tests.addTests(doctest.DocTestSuite('eventy.serializer.dummy'))
     tests.addTests(doctest.DocTestSuite('eventy.serializer.avro'))
-    tests.addTests(doctest.DocTestSuite('eventy.store.base'))
-    tests.addTests(doctest.DocTestSuite('eventy.store.kafka'))
-    tests.addTests(doctest.DocTestSuite('eventy.store.memory'))
     tests.addTests(doctest.DocTestSuite('eventy.utils'))
     return tests
