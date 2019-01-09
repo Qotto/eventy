@@ -13,6 +13,7 @@ from avro.datafile import DataFileWriter, DataFileReader
 from avro.io import DatumWriter, DatumReader
 from avro.schema import NamedSchema, Parse
 from io import BytesIO
+import re
 
 from typing import Dict, Type
 
@@ -27,7 +28,7 @@ class AvroEventSerializer(BaseEventSerializer):
     def __init__(self, settings: object) -> None:
         self.logger = logging.getLogger(__name__)
         self._schemas: Dict[str, NamedSchema] = dict()
-        self._events: Dict[str, Type[BaseEvent]] = dict()
+        self._events: Dict[object, Type[BaseEvent]] = dict()
 
         if not hasattr(settings, 'AVRO_SCHEMAS_FOLDER'):
             raise Exception('Missing AVRO_SCHEMAS_FOLDER config')
@@ -62,16 +63,31 @@ class AvroEventSerializer(BaseEventSerializer):
                         f"Avro schema {schema_name} was defined more than once!")
                 self._schemas[schema_name] = avro_schema
 
-    def register_event_class(self, event_class: Type[BaseEvent]) -> None:
+    def register_event_class(self, event_class: Type[BaseEvent], event_name: str) -> None:
         """
         Registers an event class associated to a particular event name.
         """
-        if event_class.name() not in self._schemas:
-            raise NameError(f"{event_class.name()} event does not exist")
-        self._events[event_class.name()] = event_class
+
+        # name can be a regex
+        event_name_regex = re.compile(event_name)
+
+        match = False
+        for schema_name in self._schemas:
+            if event_name_regex.match(schema_name):
+                match = True
+                break
+        if not match:
+            raise NameError(f"{event_name} does not match any schema")
+
+        self._events[event_name_regex] = event_class
 
     def encode(self, event: BaseEvent) -> bytes:
-        schema = self._schemas[event.name()]
+        schema = self._schemas[event.name]
+
+        if schema is None:
+            raise NameError(
+                f"No schema found to encode event with name {event.name}")
+
         output = BytesIO()
         writer = DataFileWriter(output, DatumWriter(), schema)
         writer.append(event.data)
@@ -85,6 +101,16 @@ class AvroEventSerializer(BaseEventSerializer):
         schema = json.loads(reader.meta.get('avro.schema').decode('utf-8'))
         schema_name = schema['namespace'] + '.' + schema['name']
         event_data = next(reader)
-        event_class = self._events.get(schema_name, GenericEvent)
 
-        return event_class.from_data(event_data=event_data)
+        # finds a matching event name
+        event_class = None
+        for e_name, e_class in self._events.items():
+            if e_name.match(schema_name):
+                event_class = e_class
+                break
+
+        if event_class is None:
+            raise NameError(
+                f"No event class registered with matching name for {schema_name}")
+
+        return event_class.from_data(event_name=schema_name, event_data=event_data)

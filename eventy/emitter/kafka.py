@@ -41,5 +41,5 @@ class KafkaProducer(BaseEventEmitter):
             await self.producer.start()
             self.started = True
         self.logger.debug(
-            f'Sending event {event.name()} on topic {destination}')
+            f'Sending event {event.name} on topic {destination}')
         await self.producer.send_and_wait(destination, event, key)

@@ -11,7 +11,7 @@ __all__ = [
 
 
 class BaseEvent:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, name: str, data: Dict[str, Any]) -> None:
         if data is None:
             data = dict()
 
@@ -22,6 +22,7 @@ class BaseEvent:
             data['timestamp'] = current_timestamp()
 
         self.data = data
+        self.name = name
 
     async def handle(self, app: BaseApp, corr_id: str):
         pass
@@ -43,9 +44,5 @@ class BaseEvent:
         return self.data['timestamp']
 
     @classmethod
-    def from_data(cls, event_data: Dict[str, Any]):
-        raise NotImplementedError
-
-    @classmethod
-    def name(cls):
+    def from_data(cls, event_name: str, event_data: Dict[str, Any]):
         raise NotImplementedError
