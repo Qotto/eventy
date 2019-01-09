@@ -56,23 +56,22 @@ class AvroEventSerializer(BaseEventSerializer):
             for s in yaml.load_all(f):
                 avro_schema_data = json.dumps(s)
                 avro_schema = Parse(avro_schema_data)
-                if avro_schema.name in self._schemas:
+                schema_name = avro_schema.namespace + '.' + avro_schema.name
+                if schema_name in self._schemas:
                     raise Exception(
-                        f"Avro schema {avro_schema.name} was defined more than once!")
-                self._schemas[avro_schema.name] = avro_schema
+                        f"Avro schema {schema_name} was defined more than once!")
+                self._schemas[schema_name] = avro_schema
 
-    def register_event_class(self, event_class: Type[BaseEvent], event_name: str = None) -> None:
+    def register_event_class(self, event_class: Type[BaseEvent]) -> None:
         """
         Registers an event class associated to a particular event name.
         """
-        if event_name is None:
-            event_name = event_class.__name__
-        if event_name not in self._schemas:
-            raise NameError(f"{event_name} event does not exist")
-        self._events[event_name] = event_class
+        if event_class.name() not in self._schemas:
+            raise NameError(f"{event_class.name()} event does not exist")
+        self._events[event_class.name()] = event_class
 
     def encode(self, event: BaseEvent) -> bytes:
-        schema = self._schemas[event.name]
+        schema = self._schemas[event.name()]
         output = BytesIO()
         writer = DataFileWriter(output, DatumWriter(), schema)
         writer.append(event.data)
@@ -84,8 +83,8 @@ class AvroEventSerializer(BaseEventSerializer):
     def decode(self, encoded_event: bytes) -> BaseEvent:
         reader = DataFileReader(BytesIO(encoded_event), DatumReader())
         schema = json.loads(reader.meta.get('avro.schema').decode('utf-8'))
-        event_name = schema['name']
+        schema_name = schema['namespace'] + '.' + schema['name']
         event_data = next(reader)
-        event_class = self._events.get(event_name, GenericEvent)
+        event_class = self._events.get(schema_name, GenericEvent)
 
-        return event_class.from_data(event_name, event_data)
+        return event_class.from_data(event_data=event_data)

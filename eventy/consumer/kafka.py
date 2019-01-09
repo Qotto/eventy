@@ -66,10 +66,10 @@ class KafkaConsumer(BaseEventConsumer):
                 corr_id = event.correlation_id
 
                 self.logger.info(
-                    f"[CID:{corr_id}] Start handling {event.name}")
+                    f"[CID:{corr_id}] Start handling {event.name()}")
                 await event.handle(app=self.app, corr_id=corr_id)
                 self.logger.info(
-                    f"[CID:{corr_id}] End handling {event.name}")
+                    f"[CID:{corr_id}] End handling {event.name()}")
 
                 if self.event_group is not None:
                     self.logger.debug(

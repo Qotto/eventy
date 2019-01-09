@@ -36,9 +36,10 @@ class KafkaProducer(BaseEventEmitter):
                 f"Unable to connect to the Kafka broker {settings.KAFKA_BOOTSTRAP_SERVER}")
             raise e
 
-    async def send(self, event: BaseEvent, destination: str):
+    async def send(self, event: BaseEvent, destination: str, key=None):
         if not self.started:
             await self.producer.start()
             self.started = True
-        self.logger.debug(f'Sending event {event.name} on topic {destination}')
-        await self.producer.send_and_wait(destination, event)
+        self.logger.debug(
+            f'Sending event {event.name()} on topic {destination}')
+        await self.producer.send_and_wait(destination, event, key)

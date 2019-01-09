@@ -14,17 +14,21 @@ class GenericEvent(BaseEvent):
     """
     Allows to create generic named events.
 
-    >>> evt = GenericEvent("MilkBought", data={'quantity': '1L'})
-    >>> evt.name
-    'MilkBought'
+    >>> evt = GenericEvent(data={'quantity': '1L'})
+    >>> evt.name()
+    'GenericEvent'
     >>> evt.data['quantity']
     '1L'
     """
 
-    def __init__(self, name: str, data: Dict[str, Any]) -> None:
-        super().__init__(name=name, data=data)
+    def __init__(self, data: Dict[str, Any]) -> None:
+        super().__init__(data=data)
 
     @classmethod
-    def from_data(cls, event_name: str, event_data: Dict[str, Any]):
-        event = cls(name=event_name, data=event_data)
+    def from_data(cls, event_data: Dict[str, Any]):
+        event = cls(data=event_data)
         return event
+
+    @classmethod
+    def name(cls):
+        return cls.__name__

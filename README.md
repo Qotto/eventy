@@ -26,31 +26,41 @@ server.py file :
 
 ```python
 from eventy.app.eventy import Eventy
+...
 
 # init eventy app
 app = Eventy()
 
 # configure the serializer
+# requires EVENTY_EVENT_SERIALIZER config variable to be set
+# if Avro serializer is used, requires additional AVRO_SCHEMAS_FOLDER variable to be set
 serializer = app.configure_event_serializer(
     settings=settings, serializer_name='serializer')
 
 # register event/command classes using the name defined in avro schema
-serializer.register_event_class(CreatePaymentCommand, "CreatePayment")
-serializer.register_event_class(PaymentCreatedEvent, "PaymentCreated")
+serializer.register_event_class(CreatePaymentCommand)
+serializer.register_event_class(PaymentCreatedEvent)
 
 # configure a command consummer
+# requires EVENTY_EVENT_CONSUMER config variable to be set
+# if Kafka consumer is used, requires additional KAFKA_BOOTSTRAP_SERVER config variable
 app.configure_consumer(settings=settings, serializer=serializer, consumer_name='payment_commands_consummer',
                        event_topics=['payment-commands'], event_group='payment', position='latest')
 
 # configure an event consummer
+# requires EVENTY_EVENT_CONSUMER config variable to be set
+# if Kafka consumer is used, requires additional KAFKA_BOOTSTRAP_SERVER config variable
 app.configure_consumer(settings=settings, serializer=serializer, consumer_name='payment_events_consummer',
                        event_topics=['payment-events'], event_group=None, position='earliest')
 
 # configure a command/event emitter named emitter
+# requires EVENTY_EVENT_EMITTER config variable to be set
+# if Kafka producer is used, requires additional KAFKA_BOOTSTRAP_SERVER config variable
 app.configure_emitter(settings=settings, serializer=serializer,
                       emitter_name="emitter")
 
 # configure the http handler
+# requires EVENTY_HTTP_HANDLER_PORT config variable to be set
 app.configure_http_handler(
     settings=settings, http_handler_name='http_handler')
 
@@ -60,7 +70,11 @@ http_handler.blueprint(sms.bp)
 # register some elements in the app
 app.set('payment_repository', adapter.get_payment_repository())
 
-# start the app
+
+# register other async tasks
+asyncio.ensure_future(myTask.run())
+
+# start the app - actually launch the asyncio loop
 app.start()
 
 ```
@@ -92,18 +106,29 @@ from eventy.command.base import BaseCommand
 class CreatePaymentCommand(BaseCommand):
 
     def __init__(self, data: Dict[str, Any]) -> None:
-        # set the name of the command as defined in the avro schema
-        super().__init__(name='CreatePayment', data=data)
+        super().__init__(data=data)
 
-    # This method is called by the consumer to instanciate the class
+    # This method is called by the consumer to instantiate the class
     @classmethod
     def from_data(cls, event_name: str, event_data: Dict[str, Any]):
         ...
 
+    # Map the name with the event defined in the avro schema
+    # This method is called when registering the event on the serializer
+    @classmethod
+    def name(cls):
+        return "qotto.payment.command.CreatePayment"
+
     # This method is called when the command is received
     async def execute(self, app: BaseApp, corr_id: str):
-        # Previously registered elements can be retrieved here
+
+        # Emit an event on topic payment-events
+        payment_created_event = PaymentCreatedEvent(data={...})
+        await app.get('emitter').send(payment_created_event, 'payment-events')
+
+        # Previously registered elements can be retrieved using their name
         payment_repository = app.get('payment_repository')
+        ...
 ```
 
 events.py :
@@ -111,24 +136,25 @@ events.py :
 ```python
 from eventy.event.base import BaseEvent
 
-class PaymentEvent(BaseEvent):
+class PaymentCreatedEvent(BaseEvent):
 
     def __init__(self, data: Dict[str, Any]) -> None:
-        # set the name of the event as defined in the avro schema
-        super().__init__(name='PaymentCreated', data=data)
+        super().__init__(data=data)
 
 
-    # This method is called by the consumer to instanciate the class
+    # This method is called by the consumer to instantiate the class
     @classmethod
     def from_data(cls, event_name: str, event_data: Dict[str, Any]):
         ...
 
+    @classmethod
+    def name(cls):
+        return 'qotto.payment.event.PaymentEvent'
+
+
     # This method is called when the event is received
     async def handle(self, app: BaseApp, corr_id: str):
-        # Previously registered elements can be retrieved here
-        payment_repository = app.get('payment_repository')
         ...
-
 ```
 
 blueprints.py :
@@ -142,8 +168,6 @@ bp = Blueprint('sms')
 async def sms(request):
     # app is registered on each request
     app = request['app']
-
-    # Previously registered elements can be retrieved here
-    payment_repository = app.get('payment_repository')
+    ...
 
 ```
