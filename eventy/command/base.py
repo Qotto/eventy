@@ -20,5 +20,15 @@ class BaseCommandResult(BaseEvent):
         return self.data['error']
 
     @property
-    def message(self):
-        return self.data['message']
+    def error_label(self):
+        if self.data['error']:
+            return self.data['error']['label']
+        else:
+            return None
+
+    @property
+    def error_message(self):
+        if self.data['error']:
+            return self.data['error'].get('message')
+        else:
+            return None

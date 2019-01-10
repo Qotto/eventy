@@ -64,8 +64,8 @@ app.configure_emitter(settings=settings, serializer=serializer,
 app.configure_http_handler(
     settings=settings, http_handler_name='http_handler')
 
-# register a blueprint on the http handler
-http_handler.blueprint(sms.bp)
+# register a blueprint on the http handler (sanic)
+app.get('http_handler').blueprint(sms.bp)
 
 # register some elements in the app
 app.set('payment_repository', adapter.get_payment_repository())
