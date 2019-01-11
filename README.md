@@ -171,3 +171,11 @@ async def sms(request):
     ...
 
 ```
+
+### Additionnal parameters
+
+Consumption behavior can be tuned with the folowwing parameters:
+
+* EVENTY_CONSUMER_MAX_RETRIES: the max number of retries to perform in case of failure (exception raised). When the max is reached the process is killed. Default to 10.
+* EVENTY_CONSUMER_RETRY_INTERVAL : the base time to wait (in ms) before retrying. Default to 1000ms.
+* EVENTY_CONSUMER_RETRY_BACKOFF_COEFF : the coeff to apply to increase the waiting time between each tries (ex: ). Default to 2.

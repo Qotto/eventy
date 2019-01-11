@@ -22,6 +22,18 @@ class KafkaConsumer(BaseEventConsumer):
         if not hasattr(settings, 'KAFKA_BOOTSTRAP_SERVER'):
             raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
 
+        self.max_retries = 10
+        if hasattr(settings, 'EVENTY_CONSUMER_MAX_RETRIES'):
+            self.max_retries = settings.EVENTY_CONSUMER_MAX_RETRIES
+
+        self.retry_interval = 1000
+        if hasattr(settings, 'EVENTY_CONSUMER_RETRY_INTERVAL'):
+            self.retry_interval = settings.EVENTY_CONSUMER_RETRY_INTERVAL
+
+        self.retry_backoff_coeff = 2
+        if hasattr(settings, 'EVENTY_CONSUMER_RETRY_BACKOFF_COEFF'):
+            self.retry_backoff_coeff = settings.EVENTY_CONSUMER_RETRY_BACKOFF_COEFF
+
         self.app = app
         self.event_topics = event_topics
         self.event_group = event_group
@@ -59,25 +71,48 @@ class KafkaConsumer(BaseEventConsumer):
                 f'An error occurred while starting kafka consumer on topic {self.event_topics} with group {self.event_group}: {e}')
             sys.exit(1)
 
-        try:
-            async for msg in self.consumer:
+        async for msg in self.consumer:
 
-                event = msg.value
-                corr_id = event.correlation_id
+            retries = 0
+            sleep_duration_in_ms = self.retry_interval
+            while True:
+                try:
+                    event = msg.value
+                    corr_id = event.correlation_id
 
-                self.logger.info(
-                    f"[CID:{corr_id}] Start handling {event.name}")
-                await event.handle(app=self.app, corr_id=corr_id)
-                self.logger.info(
-                    f"[CID:{corr_id}] End handling {event.name}")
+                    self.logger.info(
+                        f"[CID:{corr_id}] Start handling {event.name}")
+                    await event.handle(app=self.app, corr_id=corr_id)
+                    self.logger.info(
+                        f"[CID:{corr_id}] End handling {event.name}")
 
-                if self.event_group is not None:
+                    if self.event_group is not None:
+                        self.logger.debug(
+                            f"[CID:{corr_id}] Commit Kafka transaction")
+                        await self.consumer.commit()
+
                     self.logger.debug(
-                        f"[CID:{corr_id}] Commit Kafka transaction")
-                    await self.consumer.commit()
-        except Exception as e:
-            self.logger.error(
-                f'An error occurred while handling received message : {e}')
-            raise e
-        finally:
-            await self.consumer.stop()
+                        f"[CID:{corr_id}] Continue with the next message")
+                    # break the retry loop
+                    break
+
+                except Exception as e:
+                    self.logger.error(
+                        f'[CID:{corr_id}] An error occurred while handling received message : {e}.')
+
+                    if retries != self.max_retries:
+                        # increase the number of retries
+                        retries = retries + 1
+
+                        sleep_duration_in_s = int(sleep_duration_in_ms/1000)
+                        self.logger.info(
+                            f"[CID:{corr_id}] Sleeping {sleep_duration_in_s}s a before retrying...")
+                        await asyncio.sleep(sleep_duration_in_s)
+
+                        # increase the sleep duration
+                        sleep_duration_in_ms = sleep_duration_in_ms * self.retry_backoff_coeff
+
+                    else:
+                        self.logger.error(
+                            f'[CID:{corr_id}] Unable to handle message within {1 + self.max_retries} tries. Stopping process')
+                        sys.exit(1)
