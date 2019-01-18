@@ -1,6 +1,8 @@
-from aiokafka import AIOKafkaConsumer
+from aiokafka import AIOKafkaConsumer, TopicPartition
 import logging
 import sys
+import traceback
+
 from typing import Any, Dict, Type, Callable, List
 import asyncio
 from ..serializer.base import BaseEventSerializer
@@ -39,28 +41,50 @@ class KafkaConsumer(BaseEventConsumer):
         self.event_group = event_group
         self.position = position
         self.consumer = None
-        self.serializer = serializer
-        self.bootstrap_servers = settings.KAFKA_BOOTSTRAP_SERVER
-
-    async def start(self):
+        self.checkpoint_callback = None
+        bootstrap_servers = settings.KAFKA_BOOTSTRAP_SERVER
 
         consumer_args: Dict[str, Any]
         consumer_args = {
             'loop': asyncio.get_event_loop(),
-            'bootstrap_servers': [self.bootstrap_servers],
+            'bootstrap_servers': [bootstrap_servers],
             'enable_auto_commit': False,
             'group_id': self.event_group,
-            'value_deserializer': self.serializer.decode,
+            'value_deserializer': serializer.decode,
             'auto_offset_reset': self.position
         }
 
         try:
             self.consumer = AIOKafkaConsumer(
                 *self.event_topics, **consumer_args)
+
         except Exception as e:
             self.logger.error(
-                f"Unable to connect to the Kafka broker {self.bootstrap_servers} : {e}")
+                f"Unable to connect to the Kafka broker {bootstrap_servers} : {e}")
             raise e
+
+    def set_checkpoint_callback(self, checkpoint_callback):
+        self.checkpoint_callback = checkpoint_callback
+
+    async def checkpoint(self):
+
+        checkpoint = {}
+        for partition in self.consumer.assignment():
+            position = await self.consumer.position(partition)
+            checkpoint[partition] = position
+
+        self.logger.info(f'Checkpoint created for consumer : {checkpoint}')
+
+        return checkpoint
+
+    async def checkpoint_reached(self, checkpoint):
+        for partition in self.consumer.assignment():
+            position = await self.consumer.position(partition)
+            if position < checkpoint[partition]:
+                return False
+        return True
+
+    async def start(self):
 
         self.logger.info(
             f'Starting kafka consumer on topic {self.event_topics} with group {self.event_group}')
@@ -70,6 +94,11 @@ class KafkaConsumer(BaseEventConsumer):
             self.logger.error(
                 f'An error occurred while starting kafka consumer on topic {self.event_topics} with group {self.event_group}: {e}')
             sys.exit(1)
+
+        checkpoint = None
+        if self.position == 'earliest':
+            checkpoint = await self.checkpoint()
+            await self.consumer.seek_to_beginning()
 
         async for msg in self.consumer:
 
@@ -98,7 +127,7 @@ class KafkaConsumer(BaseEventConsumer):
 
                 except Exception as e:
                     self.logger.error(
-                        f'[CID:{corr_id}] An error occurred while handling received message : {e}.')
+                        f'[CID:{corr_id}] An error occurred while handling received message : {traceback.format_exc()}.')
 
                     if retries != self.max_retries:
                         # increase the number of retries
@@ -116,3 +145,8 @@ class KafkaConsumer(BaseEventConsumer):
                         self.logger.error(
                             f'[CID:{corr_id}] Unable to handle message within {1 + self.max_retries} tries. Stopping process')
                         sys.exit(1)
+
+            if checkpoint and await self.checkpoint_reached(checkpoint):
+                self.logger.info('Registered checkpoint reached')
+                if self.checkpoint_callback:
+                    await self.checkpoint_callback()

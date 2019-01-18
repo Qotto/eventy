@@ -110,7 +110,6 @@ class AvroEventSerializer(BaseEventSerializer):
                 break
 
         if event_class is None:
-            raise NameError(
-                f"No event class registered with matching name for {schema_name}")
+            event_class = GenericEvent
 
         return event_class.from_data(event_name=schema_name, event_data=event_data)

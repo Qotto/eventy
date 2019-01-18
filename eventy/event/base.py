@@ -18,8 +18,14 @@ class BaseEvent:
         if 'schema_version' not in data:
             data['schema_version'] = '0.0.0'
 
-        if 'timestamp' not in data:
-            data['timestamp'] = current_timestamp()
+        timestamp = current_timestamp()
+        if 'event_timestamp' in data:
+            timestamp = data['event_timestamp']
+
+        if 'timestamp' in data:
+            timestamp = data['timestamp']
+
+        data['timestamp'] = timestamp
 
         self.data = data
         self.name = name

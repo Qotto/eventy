@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 pyyaml = "==3.13"
 avro-python3 = "==1.8.2"
-aiokafka = "==0.4.3"
+aiokafka = "==0.5.0"
 sanic = "==0.8.3"
 
 [dev-packages]
