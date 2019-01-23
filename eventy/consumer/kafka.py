@@ -150,3 +150,4 @@ class KafkaConsumer(BaseEventConsumer):
                 self.logger.info('Registered checkpoint reached')
                 if self.checkpoint_callback:
                     await self.checkpoint_callback()
+                checkpoint = None
