@@ -9,3 +9,6 @@ __all__ = [
 class BaseEventConsumer:
     async def start(self):
         raise NotImplementedError
+
+    def set_checkpoint_callback(self, checkpoint_callback):
+        raise NotImplementedError

@@ -37,9 +37,12 @@ app = Eventy()
 serializer = app.configure_event_serializer(
     settings=settings, serializer_name='serializer')
 
-# register event/command classes using the name defined in avro schema
-serializer.register_event_class(CreatePaymentCommand)
-serializer.register_event_class(PaymentCreatedEvent)
+# register event/command classes
+# the name specified must match the avro schema full name
+# a regex pattern can be used as matching name
+serializer.register_event_class(CreatePaymentCommand, 'qotto.payment.command.CreatePaymentCommand')
+serializer.register_event_class(PaymentCreatedEvent, 'qotto.payment.event.PaymentCreated')
+serializer.register_event_class(GenericEvent, 'qotto.contract.*.Contract[Suspended|Activated]')
 
 # configure a command consummer
 # requires EVENTY_EVENT_CONSUMER config variable to be set
@@ -179,3 +182,8 @@ Consumption behavior can be tuned with the folowwing parameters:
 * EVENTY_CONSUMER_MAX_RETRIES: the max number of retries to perform in case of failure (exception raised). When the max is reached the process is killed. Default to 10.
 * EVENTY_CONSUMER_RETRY_INTERVAL : the base time to wait (in ms) before retrying. Default to 1000ms.
 * EVENTY_CONSUMER_RETRY_BACKOFF_COEFF : the coeff to apply to increase the waiting time between each tries (ex: ). Default to 2.
+
+### Earliest consumer position
+
+When 'earliest' position is specified for consumer within a group, a checkpoint is saved and the consumer start at the beginning of the topic.
+When the checkpoint is reached, the callback register with 'set_checkpoint_callback' method is called.

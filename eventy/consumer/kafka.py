@@ -77,7 +77,7 @@ class KafkaConsumer(BaseEventConsumer):
 
         return checkpoint
 
-    async def checkpoint_reached(self, checkpoint):
+    async def is_checkpoint_reached(self, checkpoint):
         for partition in self.consumer.assignment():
             position = await self.consumer.position(partition)
             if position < checkpoint[partition]:
@@ -146,7 +146,7 @@ class KafkaConsumer(BaseEventConsumer):
                             f'[CID:{corr_id}] Unable to handle message within {1 + self.max_retries} tries. Stopping process')
                         sys.exit(1)
 
-            if checkpoint and await self.checkpoint_reached(checkpoint):
+            if checkpoint and await self.is_checkpoint_reached(checkpoint):
                 self.logger.info('Registered checkpoint reached')
                 if self.checkpoint_callback:
                     await self.checkpoint_callback()
