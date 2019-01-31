@@ -112,7 +112,7 @@ class KafkaConsumer(BaseEventConsumer):
 
         current_position_checkpoint = None
         end_position_checkpoint = None
-        if self.position == 'earliest':
+        if self.position == 'earliest' and self.event_group is not None:
             current_position_checkpoint = await self.current_position_checkpoint()
             end_position_checkpoint = await self.end_position_checkpoint()
 
