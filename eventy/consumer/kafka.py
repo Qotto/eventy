@@ -41,7 +41,8 @@ class KafkaConsumer(BaseEventConsumer):
         self.event_group = event_group
         self.position = position
         self.consumer = None
-        self.checkpoint_callback = None
+        self.current_position_checkpoint_callback = None
+        self.end_position_checkpoint_callback = None
         bootstrap_servers = settings.KAFKA_BOOTSTRAP_SERVER
 
         consumer_args: Dict[str, Any]
@@ -63,23 +64,37 @@ class KafkaConsumer(BaseEventConsumer):
                 f"Unable to connect to the Kafka broker {bootstrap_servers} : {e}")
             raise e
 
-    def set_checkpoint_callback(self, checkpoint_callback):
-        self.checkpoint_callback = checkpoint_callback
+    def set_current_position_checkpoint_callback(self, checkpoint_callback):
+        self.current_position_checkpoint_callback = checkpoint_callback
 
-    async def checkpoint(self):
+    def set_end_position_checkpoint_callback(self, checkpoint_callback):
+        self.end_position_checkpoint_callback = checkpoint_callback
 
+    async def current_position_checkpoint(self):
         checkpoint = {}
         for partition in self.consumer.assignment():
-            position = await self.consumer.position(partition)
-            checkpoint[partition] = position
+            offset = await self.consumer.committed(partition) or 0
+            checkpoint[partition] = offset
 
-        self.logger.info(f'Checkpoint created for consumer : {checkpoint}')
+        self.logger.info(
+            f'Current position checkpoint created for consumer : {checkpoint}')
+
+        return checkpoint
+
+    async def end_position_checkpoint(self):
+        checkpoint = {}
+        for partition in self.consumer.assignment():
+            offset = (await self.consumer.end_offsets([partition]))[partition]
+            checkpoint[partition] = offset
+
+        self.logger.info(
+            f'End position checkpoint created for consumer : {checkpoint}')
 
         return checkpoint
 
     async def is_checkpoint_reached(self, checkpoint):
         for partition in self.consumer.assignment():
-            position = await self.consumer.position(partition)
+            position = (await self.consumer.position(partition))
             if position < checkpoint[partition]:
                 return False
         return True
@@ -95,9 +110,12 @@ class KafkaConsumer(BaseEventConsumer):
                 f'An error occurred while starting kafka consumer on topic {self.event_topics} with group {self.event_group}: {e}')
             sys.exit(1)
 
-        checkpoint = None
+        current_position_checkpoint = None
+        end_position_checkpoint = None
         if self.position == 'earliest':
-            checkpoint = await self.checkpoint()
+            current_position_checkpoint = await self.current_position_checkpoint()
+            end_position_checkpoint = await self.end_position_checkpoint()
+
             await self.consumer.seek_to_beginning()
 
         async for msg in self.consumer:
@@ -146,8 +164,14 @@ class KafkaConsumer(BaseEventConsumer):
                             f'[CID:{corr_id}] Unable to handle message within {1 + self.max_retries} tries. Stopping process')
                         sys.exit(1)
 
-            if checkpoint and await self.is_checkpoint_reached(checkpoint):
-                self.logger.info('Registered checkpoint reached')
-                if self.checkpoint_callback:
-                    await self.checkpoint_callback()
-                checkpoint = None
+            if current_position_checkpoint and await self.is_checkpoint_reached(current_position_checkpoint):
+                self.logger.info('Current position checkpoint reached')
+                if self.current_position_checkpoint_callback:
+                    await self.current_position_checkpoint_callback()
+                current_position_checkpoint = None
+
+            if end_position_checkpoint and await self.is_checkpoint_reached(end_position_checkpoint):
+                self.logger.info('End position checkpoint reached')
+                if self.end_position_checkpoint_callback:
+                    await self.end_position_checkpoint_callback()
+                end_position_checkpoint = None
