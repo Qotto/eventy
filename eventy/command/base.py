@@ -1,6 +1,7 @@
 from ..event.base import BaseEvent
 from ..app.base import BaseApp
 
+
 __all__ = [
     'BaseCommand',
 ]
@@ -17,7 +18,7 @@ class BaseCommand(BaseEvent):
 class BaseCommandResult(BaseEvent):
     @property
     def error(self):
-        return self.data['error']
+        return self.data.get('error')
 
     @property
     def error_label(self):
