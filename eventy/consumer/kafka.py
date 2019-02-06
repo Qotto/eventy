@@ -1,7 +1,6 @@
 from aiokafka import AIOKafkaConsumer, TopicPartition
 import logging
 import sys
-import traceback
 
 from typing import Any, Dict, Type, Callable, List
 import asyncio
@@ -70,27 +69,21 @@ class KafkaConsumer(BaseEventConsumer):
     def set_end_position_checkpoint_callback(self, checkpoint_callback):
         self.end_position_checkpoint_callback = checkpoint_callback
 
-    async def current_position_checkpoint(self):
-        checkpoint = {}
+    async def current_position(self):
+        position = {}
         for partition in self.consumer.assignment():
             offset = await self.consumer.committed(partition) or 0
-            checkpoint[partition] = offset
+            position[partition] = offset
 
-        self.logger.info(
-            f'Current position checkpoint created for consumer : {checkpoint}')
+        return position
 
-        return checkpoint
-
-    async def end_position_checkpoint(self):
-        checkpoint = {}
+    async def end_position(self):
+        position = {}
         for partition in self.consumer.assignment():
             offset = (await self.consumer.end_offsets([partition]))[partition]
-            checkpoint[partition] = offset
+            position[partition] = offset
 
-        self.logger.info(
-            f'End position checkpoint created for consumer : {checkpoint}')
-
-        return checkpoint
+        return position
 
     async def is_checkpoint_reached(self, checkpoint):
         for partition in self.consumer.assignment():
@@ -112,11 +105,16 @@ class KafkaConsumer(BaseEventConsumer):
 
         current_position_checkpoint = None
         end_position_checkpoint = None
-        if self.position == 'earliest' and self.event_group is not None:
-            current_position_checkpoint = await self.current_position_checkpoint()
-            end_position_checkpoint = await self.end_position_checkpoint()
+        if self.event_group is not None:
+            current_position = await self.current_position()
+            end_position = await self.end_position()
+            self.logger.debug(f'Current position : {current_position}')
+            self.logger.debug(f'End position : {end_position}')
 
-            await self.consumer.seek_to_beginning()
+            if self.position == 'earliest' and self.event_group is not None:
+                current_position_checkpoint = current_position
+                end_position_checkpoint = end_position
+                await self.consumer.seek_to_beginning()
 
         async for msg in self.consumer:
 
@@ -144,8 +142,8 @@ class KafkaConsumer(BaseEventConsumer):
                     break
 
                 except Exception as e:
-                    self.logger.error(
-                        f'[CID:{corr_id}] An error occurred while handling received message : {traceback.format_exc()}.')
+                    self.logger.exception(
+                        f'[CID:{corr_id}] An error occurred while handling received message.')
 
                     if retries != self.max_retries:
                         # increase the number of retries
