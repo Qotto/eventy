@@ -31,7 +31,7 @@ class Eventy(BaseApp):
     def start(self):
         if self.http_handler is not None:
             asyncio.ensure_future(self.http_handler.create_server(
-                host="0.0.0.0", port=self.http_handler_port))
+                host="0.0.0.0", port=self.http_handler_port, debug=self.http_debug, access_log=self.http_access_log))
 
         asyncio.get_event_loop().run_forever()
 
@@ -75,6 +75,17 @@ class Eventy(BaseApp):
             self.http_handler_port = settings.EVENTY_HTTP_HANDLER_PORT
         else:
             self.http_handler_port = 8000
+
+        if hasattr(settings, 'EVENTY_HTTP_ACCESS_LOG'):
+            self.http_access_log = settings.EVENTY_HTTP_ACCESS_LOG
+        else:
+            self.http_access_log = False
+
+        if hasattr(settings, 'EVENTY_HTTP_DEBUG'):
+            self.http_debug = settings.EVENTY_HTTP_DEBUG
+        else:
+            self.http_debug = False
+
         self.logger.debug(
             f"Initializing http handler on port {self.http_handler_port}")
         self.http_handler = Sanic()
