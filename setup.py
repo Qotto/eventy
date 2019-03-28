@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 if __name__ == '__main__':
     setup(
         name='eventy',
-        version='2.4.4',
+        version='2.4.5',
         url='https://github.com/qotto/eventy',
         license='MIT',
         author='Alexandre Syenchuk',
@@ -17,7 +17,7 @@ if __name__ == '__main__':
         zip_safe=False,
         install_requires=[
             'avro-python3==1.8.2',
-            'pyyaml==3.13',
+            'pyyaml>=3',
             'aiokafka==0.4.3',
             'sanic==0.8.3'
         ],
