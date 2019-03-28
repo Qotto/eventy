@@ -17,7 +17,7 @@ if __name__ == '__main__':
         zip_safe=False,
         install_requires=[
             'avro-python3==1.8.2',
-            'pyyaml>=3',
+            'pyyaml>=4.2b1',
             'aiokafka==0.4.3',
             'sanic==0.8.3'
         ],
