@@ -70,7 +70,7 @@ class KafkaConsumer(BaseEventConsumer):
         self.end_position_checkpoint_callback = checkpoint_callback
 
     async def current_position(self):
-        # Warning this method return all last committed offset of each partition
+        # Warning: this method returns last committed offsets for each assigned partition
 
         position = {}
         for partition in self.consumer.assignment():
@@ -80,11 +80,10 @@ class KafkaConsumer(BaseEventConsumer):
         return position
 
     async def consumer_position(self):
-        # Warning this method return all current offset of each partition
+        # Warning: this method returns current offsets for each assigned partition
 
-        assignment = self.consumer.assignment()
         position = {}
-        for partition in assignment:
+        for partition in self.consumer.assignment():
             position[partition] = await self.consumer.position(partition)
         return position
 
