@@ -1,25 +1,34 @@
-from aiokafka import AIOKafkaConsumer, TopicPartition
+# coding: utf-8
+# Copyright (c) Qotto, 2018-2020
+
+import asyncio
 import logging
 import sys
 
-from typing import Any, Dict, Type, Callable, List
-import asyncio
-from ..serializer.base import BaseEventSerializer
-from ..event.base import BaseEvent
-from ..command.base import BaseCommand
-from .base import BaseEventConsumer
+from aiokafka import AIOKafkaConsumer
+from typing import Any, Dict, List
+
 from ..app.base import BaseApp
+from ..serializer.base import BaseEventSerializer
+from .base import BaseEventConsumer
 
 __all__ = [
     'KafkaConsumer'
 ]
 
+logger = logging.getLogger(__name__)
+
 
 class KafkaConsumer(BaseEventConsumer):
-
-    def __init__(self, settings: object, app: BaseApp, serializer: BaseEventSerializer, event_topics: List[str], event_group: str, position: str) -> None:
-        self.logger = logging.getLogger(__name__)
-
+    def __init__(
+        self,
+        settings: object,
+        app: BaseApp,
+        serializer: BaseEventSerializer,
+        event_topics: List[str],
+        event_group: str,
+        position: str,
+    ) -> None:
         if not hasattr(settings, 'KAFKA_BOOTSTRAP_SERVER'):
             raise Exception('Missing KAFKA_BOOTSTRAP_SERVER config')
 
@@ -59,7 +68,7 @@ class KafkaConsumer(BaseEventConsumer):
                 *self.event_topics, **consumer_args)
 
         except Exception as e:
-            self.logger.error(
+            logger.error(
                 f"Unable to connect to the Kafka broker {bootstrap_servers} : {e}")
             raise e
 
@@ -71,17 +80,14 @@ class KafkaConsumer(BaseEventConsumer):
 
     async def current_position(self):
         # Warning: this method returns last committed offsets for each assigned partition
-
         position = {}
         for partition in self.consumer.assignment():
             offset = await self.consumer.committed(partition) or 0
             position[partition] = offset
-
         return position
 
     async def consumer_position(self):
         # Warning: this method returns current offsets for each assigned partition
-
         position = {}
         for partition in self.consumer.assignment():
             position[partition] = await self.consumer.position(partition)
@@ -92,7 +98,6 @@ class KafkaConsumer(BaseEventConsumer):
         for partition in self.consumer.assignment():
             offset = (await self.consumer.end_offsets([partition]))[partition]
             position[partition] = offset
-
         return position
 
     async def is_checkpoint_reached(self, checkpoint):
@@ -103,14 +108,16 @@ class KafkaConsumer(BaseEventConsumer):
         return True
 
     async def start(self):
-
-        self.logger.info(
-            f'Starting kafka consumer on topic {self.event_topics} with group {self.event_group}')
+        logger.info(
+            f'Starting kafka consumer on topic {self.event_topics} with group {self.event_group}'
+        )
         try:
             await self.consumer.start()
         except Exception as e:
-            self.logger.error(
-                f'An error occurred while starting kafka consumer on topic {self.event_topics} with group {self.event_group}: {e}')
+            logger.error(
+                f'An error occurred while starting kafka consumer '
+                f'on topic {self.event_topics} with group {self.event_group}: {e}'
+            )
             sys.exit(1)
 
         current_position_checkpoint = None
@@ -118,8 +125,8 @@ class KafkaConsumer(BaseEventConsumer):
         if self.event_group is not None:
             current_position = await self.current_position()
             end_position = await self.end_position()
-            self.logger.debug(f'Current position : {current_position}')
-            self.logger.debug(f'End position : {end_position}')
+            logger.debug(f'Current position : {current_position}')
+            logger.debug(f'End position : {end_position}')
 
             if self.position == 'earliest' and self.event_group is not None:
                 current_position_checkpoint = current_position
@@ -127,7 +134,6 @@ class KafkaConsumer(BaseEventConsumer):
                 await self.consumer.seek_to_beginning()
 
         async for msg in self.consumer:
-
             retries = 0
             sleep_duration_in_ms = self.retry_interval
             while True:
@@ -135,32 +141,32 @@ class KafkaConsumer(BaseEventConsumer):
                     event = msg.value
                     corr_id = event.correlation_id
 
-                    self.logger.info(
+                    logger.info(
                         f"[CID:{corr_id}] Start handling {event.name}")
                     await event.handle(app=self.app, corr_id=corr_id)
-                    self.logger.info(
+                    logger.info(
                         f"[CID:{corr_id}] End handling {event.name}")
 
                     if self.event_group is not None:
-                        self.logger.debug(
+                        logger.debug(
                             f"[CID:{corr_id}] Commit Kafka transaction")
                         await self.consumer.commit()
 
-                    self.logger.debug(
+                    logger.debug(
                         f"[CID:{corr_id}] Continue with the next message")
                     # break the retry loop
                     break
-
-                except Exception as e:
-                    self.logger.exception(
-                        f'[CID:{corr_id}] An error occurred while handling received message.')
+                except Exception:
+                    logger.exception(
+                        f'[CID:{corr_id}] An error occurred while handling received message.'
+                    )
 
                     if retries != self.max_retries:
                         # increase the number of retries
                         retries = retries + 1
 
-                        sleep_duration_in_s = int(sleep_duration_in_ms/1000)
-                        self.logger.info(
+                        sleep_duration_in_s = int(sleep_duration_in_ms / 1000)
+                        logger.info(
                             f"[CID:{corr_id}] Sleeping {sleep_duration_in_s}s a before retrying...")
                         await asyncio.sleep(sleep_duration_in_s)
 
@@ -168,18 +174,18 @@ class KafkaConsumer(BaseEventConsumer):
                         sleep_duration_in_ms = sleep_duration_in_ms * self.retry_backoff_coeff
 
                     else:
-                        self.logger.error(
+                        logger.error(
                             f'[CID:{corr_id}] Unable to handle message within {1 + self.max_retries} tries. Stopping process')
                         sys.exit(1)
 
             if current_position_checkpoint and await self.is_checkpoint_reached(current_position_checkpoint):
-                self.logger.info('Current position checkpoint reached')
+                logger.info('Current position checkpoint reached')
                 if self.current_position_checkpoint_callback:
                     await self.current_position_checkpoint_callback()
                 current_position_checkpoint = None
 
             if end_position_checkpoint and await self.is_checkpoint_reached(end_position_checkpoint):
-                self.logger.info('End position checkpoint reached')
+                logger.info('End position checkpoint reached')
                 if self.end_position_checkpoint_callback:
                     await self.end_position_checkpoint_callback()
                 end_position_checkpoint = None

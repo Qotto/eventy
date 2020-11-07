@@ -1,11 +1,10 @@
 # coding: utf-8
-# Copyright (c) Qotto, 2018
+# Copyright (c) Qotto, 2018-2020
 
 from base64 import b64encode
 from datetime import datetime
 from datetime import timezone
 from secrets import token_urlsafe
-from typing import Any
 from pydoc import locate
 
 __all__ = [
@@ -24,7 +23,7 @@ def date2timestamp(date: datetime) -> int:
     >>> date2timestamp(datetime(1970, 1, 2, tzinfo=timezone.utc))
     86400000
     """
-    return round(date.timestamp()*1000)
+    return round(date.timestamp() * 1000)
 
 
 def timestamp2date(timestamp: int) -> datetime:
@@ -36,7 +35,7 @@ def timestamp2date(timestamp: int) -> datetime:
     >>> timestamp2date(24*3600*1000)
     datetime.datetime(1970, 1, 2, 1, 0)
     """
-    return datetime.fromtimestamp(timestamp/1000.0)
+    return datetime.fromtimestamp(timestamp / 1000.0)
 
 
 def current_timestamp() -> int:

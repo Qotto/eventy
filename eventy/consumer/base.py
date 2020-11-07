@@ -1,5 +1,5 @@
-from typing import Type, Callable
-from ..event.base import BaseEvent
+# coding: utf-8
+# Copyright (c) Qotto, 2018-2020
 
 __all__ = [
     'BaseEventConsumer'

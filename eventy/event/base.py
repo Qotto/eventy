@@ -1,9 +1,10 @@
 # coding: utf-8
-# Copyright (c) Qotto, 2018
+# Copyright (c) Qotto, 2018-2020
 
-from ..utils import current_timestamp, gen_correlation_id
 from typing import Any, Dict
+
 from ..app.base import BaseApp
+from ..utils import current_timestamp
 
 __all__ = [
     'BaseEvent'
