@@ -6,7 +6,6 @@ NAME_NORMALIZED := $(shell echo ${NAME} | sed s/-/_/)
 help:
 	@echo "make sdist           - Creates python source packages"
 	@echo "make pypi            - Updates PyPI package"
-	@echo "make requirements    - Updates requirements files"
 	@echo "make test            - Runs tests"
 	@echo "make clean           - Gets rid of scratch and byte files"
 
